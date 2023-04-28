@@ -1,0 +1,418 @@
+---
+title: "AOSD Final Assignment"
+author: 'Mohamed Shamsudeen Mohamed Musdakeem (matric. no: 536944)'
+date: "2023-03-09"
+output: html_document
+mail: "mailto:shamsudeen.m@uni-muenster.de"
+---
+<a href="mailto:shamsudeen.m@uni-muenster.de">Contact</a>
+<style>
+.justify {
+  text-align: justify;
+  text-justify: inter-word;
+}
+</style>
+
+<center> <font size="6"> **Forest Fire Mapping** </font></center>
+
+### _______________________________________________________________________
+<center> <font size="5"> **Analysis of Spatio-Temporal Data** </font></center>
+<center> <font size="3"> _Institut für Geoinformatik - Universität Münster_ </font></center>
+<center> <font size="3"> _M.Sc Geoinformatics and Spatial Data Science_ </font></center>
+_________________________________________________________________________
+
+## **Introduction:**
+<p class="justify">Remote sensing technology can be used to detect and analyze forest fires quickly and accurately. Several applications such as fire detection,  fire mapping, Fire behavior prediction, Post-fire assessment and Monitoring fire recovery can obtain the use of several satellite images. Remote sensing technology combined with R programming can be used to analyze spatio-temporal patterns in forest fires by examining changes in the spatial distribution of burned areas over time.</p>
+<p class="justify">Overall, the analysis of spatio-temporal patterns in forest fires using remote sensing technology and R programming can provide valuable insights into the dynamics of forest fires and help in the management and mitigation of their effects.</p>
+## **Hypothesis:**
+<p class="justify">The Normalized Burn Ratio (NBR) can be an effective tool for monitoring and assessing the severity of forest fires. It is based on the principle that healthy vegetation reflects more near-infrared (NIR) radiation and absorbs more shortwave-infrared (SWIR) radiation than burned or dead vegetation. By calculating the difference between pre- and post-fire NIR and SWIR reflectance values, the NBR can provide an estimate of the severity and extent of burn areas.
+Hence, the hypothesis is that</p>
+<p class="justify">1.NBR is an effective tool for detecting and measuring the severity of forest fires, providing timely and accurate information for forest fire management and control.</p>
+<p class="justify">2.The burn severity in forest fires does not change over period time. (Null Hypothesis)</p>
+<p class="justify">Overall, the hypothesis is that the NBR can serve as a valuable tool for forest fire monitoring and management, and can contribute to the development of effective and sustainable strategies for preventing and responding to forest fires.</p>
+
+### Importing Required Packages
+The initial phase is to load the necessary R packages for analysis after data collection.
+```{r message=FALSE, warning=FALSE}
+library(rgdal)
+library(raster)
+library(rgeos)	
+library(rasterVis)
+library(RCurl)
+library(knitr)
+library(moments)
+library(ggplot2)
+library(devtools)
+library(RColorBrewer)
+
+# Working Directory
+setwd("C:/Users/shamz/Documents/3layer")
+```
+
+## **Data**
+<p class="justify">The dataset utilized in the project is Landsat 8 satellite image, which was collected from Google Earth Engine (GEE). The dataset is cloud-free, ensuring high-quality images for analysis. The images were collected for the months of April and July in 2017, before and after a fire event. The GEE code to download the dataset can be found **[here](https://code.earthengine.google.com/426f83e154e0f8b82f5c45f031559f65)**. This enables a comparison of the pre- and post-fire circumstances, which provide insights on how the fire affected the vegetation and land cover. Monitoring vast regions and following changes over time can be done effectively by using satellite imagery.</p> 
+
+## **Study Area**
+<p class="justify">A forest fire of unprecedented scale swept through three regions in central Portugal in 2017, causing widespread damage and loss of life. Castanheira de Pêra (66.774 sq.km), Figueiró dos Vinhos (173.439 sq.km), and Pedrógão Grande (128.747 sq.km) are all located in the district of Leiria, which is situated in the central region of Portugal and has a combined area of over 369 square kilometers. According to analysis, the fire severely damaged significant tracts of forest in these three areas.</p> 
+<center> ![](C:/Users/shamz/Documents/3layer/study_area.png)</center>
+Then, the working directory is set and the raster data files for prefire and postfire are loaded using the raster() package.
+```{r}
+#Pre-fire
+Redpre <- raster("Pre_fire/L8_B4_April.tif")
+NIRpre <- raster("Pre_fire/L8_B5_April.tif")
+SWIRpre<- raster("Pre_fire/L8_B7_April.tif")
+#Post-fire
+Redpost <- raster("Post_fire/L8_B4_July.tif")
+NIRpost <- raster("Post_fire/L8_B5_July.tif")
+SWIRpost<- raster("Post_fire/L8_B7_July.tif")
+```
+
+### NDVI Pre-fire
+<p class="justify">Normalized Difference Vegetation Index (NDVI) is then calculated using a formula. x variable is created to export the calculated NDVI Prefire as a tiff file. Histograms of NDVI pre- and post-fire are then plotted, with Digital Number values on the x-axis and Frequency on the y-axis.</p>
+```{r}
+#ndvi Pre-fire
+ndvi_pre <- (NIRpre - Redpre)/(NIRpre + Redpre)
+# histogram
+par(mar=c(4,4,5,5))
+histndvipre <- hist(ndvi_pre, main = "NDVI Pre-Fire", xlab = "DN Values",xlim=c(-0.2,1), ylab = "Frequency", 
+                    ylim=c(0,220000),border = "black",las=1, breaks = 40, col = "springgreen")
+```
+
+### NDVI Post-fire
+Same method is done for the postfire.
+```{r }
+#ndvi Postfire
+ndvi_post <- (NIRpost - Redpost)/(NIRpost + Redpost)
+# histogram
+par(mar=c(4,4,5,5))
+histndvipost <- hist(ndvi_post, main = "NDVI Post-Fire", xlab = "DN Values", xlim=c(-0.2,1), ylab = "Frequency", 
+                     ylim=c(0,120000),border = "black",las=1, breaks = 40, col = "firebrick")
+```
+
+### NDVI Plots
+<p class="justify">The colorRampPalette() function from the RColorBrewer package is used to create a color palette for visualization. Finally, the NDVI prefire and postfire are plotted side by side using the plot() function from the rasterVis package and to compare the differences the par((mfrow=c(1,2)) is set to 1,2.</p>
+```{r}
+ndvi_clr <- colorRampPalette(brewer.pal(11, "RdYlGn"))(100)
+# Plot Vegetation
+par(mar=c(2,2,5,5))
+par(mfrow=c(1,2))
+plot(ndvi_pre, main = "NDVI\n Pre-Fire", axes = F, box = F, col = ndvi_clr, zlim = c(-1, 1))
+plot(ndvi_post, main = "NDVI\n Post-Fire",axes = F,box = F, col = ndvi_clr, zlim = c(-1, 1))
+```
+
+## Delta NDVI (ΔNDVI)
+The delta NDVI is calculated to check the change in the vegetation over time, a map and histogram are also plotted for this.
+```{r}
+# NDVI change
+change_ndvi <- ndvi_post - ndvi_pre
+par(mar=c(1,1,1,1),mfrow=c(1,1))
+chng_col <- colorRampPalette(c("red", "yellow", "lightgreen"))(length(seq(-1, 1, 0.1)))
+plot(change_ndvi, main = "NDVI Change (ΔNDVI)", axes = F,box = F, col = chng_col, zlim = c(-1, 1))
+# histogram
+par(mar=c(4,4,5,5),mfrow=c(1,1))
+hist(change_ndvi, main = "NDVI Change", xlab = "DN Values", xlim=c(-1,0.7), 
+     ylab = "Frequency", ylim=c(0,130000),border = "black", las=1, 
+     breaks = 40, col = "sienna1")
+```
+
+### Boxplot
+<p class="justify">The distribution of NDVI values for each time period is shown visually in a boxplot by this code for two time periods: pre-fire and post-fire. Using the data.frame() function, a data frame is created, Time Period, which specifies whether the NDVI value was measured before or after the fire, and NDVI Value, which includes the NDVI values for each time period. With the ncell() function, the NDVI raster data for each time period is divided into the number of cells, and the time period label is repeated to correspond to the number of cells using the rep() function.</p>
+<p class="justify">ggplot2 package utilized to generate a boxplot. The x and y variables are defined using the aes() function, and geom_boxplot() is implemented to produce the boxplot. The x-axis and y-axis are labeled using xlab() and ylab(), respectively. Boxplots are an effective means of visualizing data distribution, including the median, quartiles, and potential outliers. In this instance, the boxplot illustrates the spread of NDVI values for the pre-fire and post-fire periods, allowing for a comparison of vegetation greenness prior to and following the fire.</p>
+
+```{r message=FALSE,warning=FALSE}
+# data frame with NDVI values for each time period
+ndvi_values <- data.frame(Time_Period = c(rep("Pre-fire", ncell(ndvi_pre)), rep("Post-fire", ncell(ndvi_post))),
+                          NDVI_Value = c(ndvi_pre[], ndvi_post[]))
+
+# Boxplot
+ggplot(ndvi_values, aes(x = Time_Period, y = NDVI_Value)) + geom_boxplot() + xlab("") + 
+  ylab("NDVI Values") + ggtitle("Boxplot of NDVI Values")
+```
+### NBR Pre-fire
+After completing the NDVI analysis, I proceeded with the Normalized Burn Ratio (NBR) analysis. The same procedures were followed for the NBR Pre- and Postfire data.
+```{r}
+# calculates pre-fire NBR
+NBR_prefire<-(NIRpre-SWIRpre)/(NIRpre+SWIRpre)
+#x <- writeRaster(NBR_prefire, filename="nbrpre.tif", overwrite=TRUE)
+# histogram
+par(mar=c(5,5,5,5))
+histnbrpre <- hist(NBR_prefire, main = "NBR Pre-Fire", xlab = "DN Values", 
+                     xlim=c(-0.5,1), ylab = "Frequency", ylim=c(0,180000),border = "black", 
+                     las=1, breaks = 80, col = "darkseagreen")
+```
+
+### NBR Postfire
+Same is done for the postfire.
+```{r}
+NBR_postfire <-(NIRpost-SWIRpost)/(NIRpost+SWIRpost)
+# export the result to tiff
+x <- writeRaster(NBR_postfire, filename="nbrpost.tif", overwrite=TRUE)
+# histogram
+par(mar=c(5,5,5,5))
+histnbrpost <- hist(NBR_postfire, main = "NBR Post-Fire", xlab = "DN Values", 
+                   xlim=c(-0.5,1), ylab = "Frequency", ylim=c(0,40000),border = "black", 
+                   las=1, breaks = 20, col = "coral4")
+```
+
+### NBR Plot
+```{r}
+# Define color palette
+nbr_clr <- colorRampPalette(brewer.pal(11, "Spectral"))(100)
+#Define in how many rows and columns are the graphs plotted
+par(mar=c(2,2,5,5),mfrow=c(1,2))
+# Plot Burn
+plot(NBR_prefire, main = "NBR\n Pre-Fire", axes = FALSE, 
+     box = FALSE, col = nbr_clr, zlim = c(-1, 1))
+plot(NBR_postfire, main = "NBR\n Post-Fire",axes = FALSE,
+     box = FALSE, col = nbr_clr, zlim = c(-1, 1))
+```
+
+### Levelplot
+<p class="justify">In addition, the NBR data are represented visually and color-coded using the levelplot function. Levelplot is particularly useful for visualizing large matrices or data frames where each cell represents a value. It enables us to see how spatially varied the NBR data are throughout the research region. This is crucial for locating the burnt regions and determining how severe the burn was.</p>
+
+```{r}
+#Levelplot for NBR Pre & Post fires
+levelplot(NBR_prefire, col.regions=colorRampPalette(c("blue", "white", "red"))(100), at=seq(-1, 1, by=0.1), main="NBR Pre-Fire")
+levelplot(NBR_postfire, col.regions=colorRampPalette(c("blue", "white", "red"))(100), at=seq(-1, 1, by=0.1), main="NBR Post-Fire")
+```
+
+### Statistics Calculation
+<p class="justify">The distribution of NDVI and NBR values for prefire and postfire circumstances is shown in Table below. The minimum and maximum values show the range of actual values, while the median shows the average throughout the whole distribution. Although skewness and kurtosis offer details on the symmetry and shape of the distribution, variance indicates the spread of data.
+Overall, these data used to evaluate changes in vegetation health and fire intensity as well as to compare the distribution of NDVI and NBR values between pre- and post fire situations.</p>
+```{r}
+# Export the result as tiff
+x <- writeRaster(ndvi_pre, filename="ndvipre.tif", overwrite=TRUE)
+x <- writeRaster(ndvi_post, filename="ndvipost.tif", overwrite=TRUE)
+x <- writeRaster(NBR_prefire, filename="nbrpre.tif", overwrite=TRUE)
+x <- writeRaster(NBR_postfire, filename="nbrpost.tif", overwrite=TRUE)
+# Load raster layers
+ndvi_post <- raster("ndvipost.tif")
+ndvi_pre <- raster("ndvipre.tif")
+nbr_post <- raster("nbrpost.tif")
+nbr_pre <- raster("nbrpre.tif")
+
+# Calculate statistics for ndvi_pre
+min_ndvi_pre <- round(cellStats(ndvi_pre, stat = "min"),4)
+max_ndvi_pre <- round(cellStats(ndvi_pre, stat = "max"),4)
+mean_ndvi_pre<- round(cellStats(ndvi_pre, stat = "mean"),4) #fix typo
+sd_ndvi_pre  <-round(cellStats( ndvi_pre ,stat="sd"),4 )
+skew_ndvi_pre<-round(skewness(ndvi_pre, na.rm = TRUE),4)
+kurt_ndvi_pre<-round(kurtosis(ndvi_pre, na.rm = TRUE),4)
+# Calculate statistics for ndvi_post
+min_ndvi_post <- round(cellStats(ndvi_post, stat = "min"), 4)
+max_ndvi_post <- round(cellStats(ndvi_post, stat = "max"), 4)
+mean_ndvi_post<- round(cellStats(ndvi_post, stat = "mean"), 4)
+sd_ndvi_post  <- round(cellStats(ndvi_post, stat = "sd"), 4)
+skew_ndvi_post<- round(skewness(ndvi_post, na.rm = TRUE), 4)
+kurt_ndvi_post<- round(kurtosis(ndvi_post, na.rm = TRUE), 4)
+# Calculate statistics for nbr_ pre
+min_nbr_pre <-round(cellStats(nbr_pre ,stat="min"),4)
+max_nbr_pre <-round(cellStats(nbr_pre ,stat="max"),4)
+mean_nbr_pre<-round(cellStats (nbr_pre,stat="mean"),4) 
+sd_nbr_pre  <-round(cellStats(nbr_pre,stat= "sd"),4) 
+skew_nbr_pre<-round(skewness(NBR_prefire, na.rm = TRUE),4 ) 
+kurt_nbr_pre<-round(kurtosis(NBR_prefire, na.rm = TRUE),4 ) 
+# Calculate statistics for nbr_post
+min_nbr_post <-round(cellStats(nbr_post ,stat="min"),4 )
+max_nbr_post <-round(cellStats(nbr_post ,stat="max"),4 )
+mean_nbr_post<-round(cellStats(nbr_post ,stat="mean"),4 )
+sd_nbr_post  <-round(cellStats(nbr_post ,stat="sd"),4 )
+skew_nbr_post<-round(skewness(NBR_postfire, na.rm = TRUE),4)
+kurt_nbr_post<-round(kurtosis(NBR_postfire, na.rm = TRUE),4)
+
+# Create table
+stats_table <- data.frame(
+    Layer=c("NDVI Prefire", "NDVI Postfire", "NBR Prefire", 'NBR Postfire'),
+    Minimum=c(min_ndvi_pre,min_ndvi_post,min_nbr_pre,min_nbr_post),
+    Maximum=c(max_ndvi_pre,max_ndvi_post,max_nbr_pre,max_nbr_post),
+    Mean=c(mean_ndvi_pre,mean_ndvi_post,mean_nbr_pre,mean_nbr_post),
+    SD=c(sd_ndvi_pre,sd_ndvi_post,sd_nbr_pre,sd_nbr_post),
+    Skewness=c(skew_ndvi_pre,skew_ndvi_post,skew_nbr_pre,skew_nbr_post),
+    Kurtosis=c(kurt_ndvi_pre,kurt_ndvi_post,kurt_nbr_pre,kurt_nbr_post))
+
+# Print table
+print(stats_table)
+```
+
+### Kernel Density
+<p class="justify">The next phase of the analysis involves kernel density plotting for NDVI and NBR pre- and postfire. Raster values of data are converted to data frames and combined into a single data frame using rbind(). Then kernel density was plotted, where the x-axis represents DN (digital number) values and the y-axis represents density. Kernel density is used to estimate the probability density function of a random variable in a non-parametric manner. In this project, it is used to visualize the distribution of NDVI and NBR values pre- and postfire and to see the differences between them. The plots are faceted by variables (NDVI and NBR) and colored by time (pre-fire and post-fire). The ggplot2 package is used to create these plots, with geom_density() function used to create the kernel density plots and facet_wrap() function used to facet the plots.</p>
+```{r warning=FALSE, message=FALSE}
+# Extract NDVI and NBR values for pre-fire and post-fire
+ndvi_prefire <- raster("ndvipre.tif")
+ndvi_postfire<- raster("ndvipost.tif")
+nbr_prefire  <- raster("nbrpre.tif")
+nbr_postfire <- raster("nbrpost.tif")
+
+# Convert raster values to data frames
+ndvi_prefire_df <- data.frame(layer=as.vector(ndvi_prefire), time="Prefire", variable="NDVI")
+ndvi_postfire_df<- data.frame(layer=as.vector(ndvi_postfire), time="Postfire", variable="NDVI")
+nbr_prefire_df  <- data.frame(layer=as.vector(nbr_prefire), time="Prefire", variable="NBR")
+nbr_postfire_df <- data.frame(layer=as.vector(nbr_postfire), time="Postfire", variable="NBR")
+
+# Combine data frames
+ndvi_nbr_df <- rbind(ndvi_prefire_df, ndvi_postfire_df, nbr_prefire_df, nbr_postfire_df)
+
+# Create kernel density plots
+ggplot(ndvi_nbr_df, aes(x=layer, fill=time)) + geom_density(alpha=0.5) + facet_wrap(~variable, scales="free_x") +
+  labs(x="DN Values", y="Density", title="Kernel Density Plot of NDVI and NBR Pre- and Post-Fire") +theme_classic()
+```
+
+## **Delta NBR**
+<p class="justify">After that, I computed ΔNBR using the obtained NBR prefire and NBR postfire. This can subsequently be applied to determine the burn's severity. Greater dNBR values(+) indicate more serious damage, although negative(-) dNBR values have regions that have recovered from a fire. Map and histogram is also plotted in order to show the difference.</p>
+```{r}
+dNBR <- (NBR_prefire) - (NBR_postfire)
+par(mar=c(1,1,1,1),mfrow=c(1,1))
+dNBR_col <- colorRampPalette(c("firebrick","orange","yellow"))(length(seq(-1, 1, 0.1)))
+plot(dNBR, main = "NBR Change (ΔNBR)", axes = FALSE,box = FALSE, col = dNBR_col, zlim = c(-1, 1))
+```
+
+### Burn Severity Classification and Building Legend
+<p class="justify">Evaluation of dNBR values may differ depending on specific case, a field assessment to obtain the most accurate results is recommended. However, a classification table proposed by  USGS for interpreting burn severity, which is shown in below [Table](https://un-spider.org/advisory-support/recommended-practices/recommended-practice-burn-severity/in-detail/normalized-burn-ratio).</p>
+
+<center> ![](https://un-spider.org/sites/default/files/table+legend.PNG)</center>
+
+<p class="justify">It is essential to classify dNBR according to the USGS burn severity standards, utilizing a classification matrix. Then, the reclassify() function will reclassify the dNBR_scaled raster using the classification matrix and create a legend for the different burn severity classes. In order to allocate categorical values to raster pixels, a raster attribute table (RAT) is produced using the ratify() function.</p>
+```{r}
+# multiply by 1000 to understand great differences
+dNBR_scl <- 1000*dNBR
+
+# set ranges to classify dNBR
+NBR_ranges <- c(-Inf, -500, -1, -500, -251, 1, -251, -101, 2, -101, 99, 3, 99, 269, 4, 
+                269, 439, 5, 439, 659, 6, 659, 1300, 7, 1300, +Inf, -1) 
+
+# create classification matrix
+class.mat <- matrix(NBR_ranges, ncol = 3, byrow = TRUE)
+
+# dNBR scaled classified using classification matrix
+dNBR_reclass <- reclassify(dNBR_scl, class.mat, right=NA)
+
+# Create legend attribute table 
+dNBR_reclass <- ratify(dNBR_reclass) # categorize raster as variable
+rat <- levels(dNBR_reclass)[[1]] # rat = raster attribute table
+
+# display legend text
+rat$legend  <- c("NA","Enhanced Regrowth, High", "Enhanced Regrowth, Low", "Unburned", 
+                 "Low Severity", "Moderate-low Severity", "Moderate-high Severity", "High Severity") 
+levels(dNBR_reclass) <- rat 
+```
+
+### Burn Severity Map
+<p class="justify">The default colors of the map were adjusted to better represent burn severity. To create the burn severity map, the "sev_col" variable is used to define a range of eight color names from white to purple. The "plot" function is then utilized with the "dNBR_reclass" dataset to generate the map, and the defined color scheme is applied using the "col" parameter set to "sev_col".</p>
+```{r}
+# severity map color combination
+sev_col <- c("white", "darkolivegreen", "darkolivegreen4", "limegreen", "yellow2", "orange2", "red", "purple")
+par(mar = c(2, 1, 2, 1))
+# burn severity map plot
+plot(dNBR_reclass, col = sev_col, legend = FALSE, box = FALSE, axes = FALSE, main = "Burn Severity Map")
+
+par(mar = c(5, 1, 2, 7))
+# legend for burn severity map
+legend(x = 'right', legend = rat$legend, fill = sev_col, y = 'bottom', bty = "n", cex = 0.65)
+```
+
+
+```{r warning=FALSE}
+# Set the size of plotting device
+par(mar=c(1,1,1,1),mfrow=c(1,1))
+par(plt = c(0.1, 0.9, 0.1, 0.8))
+barplot(dNBR_reclass, main = "Classified NBR Value Distribution",
+        col = sev_col,names.arg = c("NA", "ERH", "ERL", "Unburn", "Low", "Mod", "ModHg", "High"), las=0)
+```
+
+### NBR category - Pixel count
+<p class="justify">To compute the number of pixels in each category of a reclassified dNBR raster and visualize the results, first utilized the getValues() function to extract the pixel values of dNBR reclass and save them in the values variable.</p>
+values <- getValues(dNBR_reclass)
+<p class="justify">Then, use the length() and subset() functions to count the number of pixels in each category of the reclassified raster.</p>
+```{r message=FALSE, warning=FALSE}
+values <- getValues(dNBR_reclass)
+
+pixcnt_na     <- length(subset(values, values == -1))
+pixcnt_ERHigh <- length(subset(values, values == 1))
+pixcnt_ERLow  <- length(subset(values, values == 2))
+pixcnt_Unburn <- length(subset(values, values == 3))
+pixcnt_Low    <- length(subset(values, values == 4))
+pixcnt_ModLow <- length(subset(values, values == 5))
+pixcnt_ModHigh<- length(subset(values, values == 6))
+pixcnt_High   <- length(subset(values, values == 7))
+
+pixcnt_values <- c(pixcnt_na,pixcnt_ERHigh,pixcnt_ERLow,pixcnt_Unburn,pixcnt_Low,pixcnt_ModLow,pixcnt_ModHigh,pixcnt_High)
+
+barplt <- barplot(dNBR_reclass, main = "NBR category - Pixel count",col = sev_col,
+                  names.arg = c("NA", "ERH", "ERL", "Unburn","Low", "Mod", "ModHg", "High"), las=0)
+text(barplt, y=2500, labels=pixcnt_values)
+```
+
+### NBR category Percentage
+
+```{r warning=FALSE}
+pixcnt_total<- length(values)
+
+na_prct     <- round(pixcnt_na/pixcnt_total*100, digits = 3)
+ERHigh_prct <- round(pixcnt_ERHigh/pixcnt_total*100, digits = 3)
+ERLow_prct  <- round(pixcnt_ERLow/pixcnt_total*100, digits = 3)
+Unburn_prct <- round(pixcnt_Unburn/pixcnt_total*100, digits = 3)
+Low_prct    <- round(pixcnt_Low/pixcnt_total*100, digits = 3)
+ModLow_prct <- round(pixcnt_ModLow/pixcnt_total*100, digits = 3)
+ModHigh_prct<- round(pixcnt_ModHigh/pixcnt_total*100, digits = 3)
+High_prct   <- round(pixcnt_High/pixcnt_total*100, digits = 3)
+
+area_prct <- c(na_prct,ERHigh_prct,ERLow_prct,Unburn_prct,Low_prct,ModLow_prct,ModHigh_prct,High_prct)
+
+bar_plt <- barplot(dNBR_reclass, main = "NBR category Percentage", col = sev_col,
+              names.arg = c("NA", "ERH", "ERL", "Unburn", "Low", "Mod", "ModHg", "High"), las=0)
+text(bar_plt, y=2500, labels=area_prct)
+```
+
+## **Estimation of land destroyed by fire in each severity class**
+Using Landsat 8 satellite images with a spatial resolution of 30m x 30m, or an area of 0.09 hectares per pixel, this algorithm calculates the extent of land damaged by fire in each severity class. The extent of land in each severity class is determined by multiplying the number of pixels in each class by the area per pixel (0.09 hectares), and the results are then stored in variables with descriptive names. The "df" data frame, which is created next, has two columns: "Severity Class" and "Area of Land (hectares)". The Area of Land column includes the area of land damaged by fire in each severity class, estimated in hectares.
+```{r}
+#landsat 8 spatial resolution 30m X30m, and the area is 900 sqm= 0.09 hectare
+area_per_pixel <- 0.09 # Assuming a resolution of 30 meters
+
+Na     <- pixcnt_na     * area_per_pixel
+ERHigh <- pixcnt_ERHigh * area_per_pixel
+ERLow  <- pixcnt_ERLow  * area_per_pixel
+Unburn <- pixcnt_Unburn * area_per_pixel
+Low    <- pixcnt_Low    * area_per_pixel
+ModLow <- pixcnt_ModLow * area_per_pixel
+ModHigh<- pixcnt_ModHigh* area_per_pixel
+High   <- pixcnt_High   * area_per_pixel
+
+# Create a data frame with the results
+df <- data.frame(
+  "Severity Class" = c("NA", "ER-High", "ER-Low", "Unburned", "Low Severity", "Moderate-low Severity", "Moderate-high Severity", "High Severity"),
+  "Area of Land (hectares)" = c(Na, ERHigh, ERLow, Unburn, Low, ModLow, ModHigh, High),
+check.names = FALSE)
+
+# Print the table using kable
+kable(df, format = "html")
+```
+
+## **Hypothesis Test Conclusion**
+### _Hypothesis 1_
+<p class="justify">Based on the analyses conducted, it can be accepted that the use of NBR can aid forest fire monitoring by providing timely and accurate information on the severity of the fire. The various analyses conducted, such as the NBR pre- and postfire, delta NBR, levelplot for both NBR pre- and postfire, Kernel density plot and burn severity map, all demonstrate the usefulness of NBR in detecting and monitoring forest fires.</p>
+<p class="justify">The NBR pre- and postfire analysis helps to identify the burned areas and assess the severity of the fire. The delta NBR analysis, which involves subtracting the postfire NBR from the prefire NBR, helps to identify areas where the vegetation has been significantly affected by the fire. The levelplot for both NBR pre- and postfire provides a graphical representation of the severity of the fire in different areas, and can be used to identify areas that require urgent attention.</p>
+<p class="justify">All together, the various analyses conducted using NBR demonstrate its usefulness in aiding forest fire monitoring by providing timely and accurate information on the severity of the fire. These findings support the hypothesis that the use of NBR can aid in the management and mitigation of the effects of forest fires.</p>
+### _Hypothesis 2_
+<p class="justify">After analyzing the NBR pre- and postfire, delta NBR, levelplot for both NBR pre- and postfire and burn severity map, we can reject the null hypothesis that the burn severity in forest fires does not change over time. The results of our analysis indicate that there is a significant difference in burn severity between the prefire and postfire NBR values. The delta NBR and levelplot for both NBR pre- and postfire clearly show the changes in NBR values and burn severity over time. The burn severity map also provides visual evidence of the variation in burn severity across the forest area. Therefore, it can be concluded that the burn severity in forest fires does change over time, and the use of NBR can aid in detecting and monitoring these changes.</p>
+## **Results**
+<p class="justify">Here NDVI used to study the condition and health status of vegetation during before and after forest fire. From this analysis, nearly 90% of vegetation area undergone severe stress during forest fire, which indicates that the fire had a significant impact on the vegetation in the area. Healthy pattern of vegetation only seen in the certain part especially in north and south end, this suggests that these areas were either not affected by the fire or were able to recover quickly.</p>
+<p class="justify">The total forest area in the region decreased from 1.0 (healthy) to 0 (unhealthy/burnt), indicating that the entire forest land was affected by the fire. This highlights the severity of the forest fire and the importance of taking steps to prevent and mitigate the impact of fires on the environment.</p>
+<p class="justify">Difference in NBR values before and after a forest fire generated to show the extent of the burnt area. Here, post-fire NBR values are more negative than the pre-fire NBR values in the study areas that have been burned, indicating a greater severity of the fire.</p>
+## **Conclusion**
+<p class="justify">Based on the results and analysis, it can be concluded that the forest fire that happened in the study area of Portugal in 2017 had a significant impact on vegetation cover. The analysis of various parameters to determine the extent and intensity of the fire was made possible with the help of Landsat 8 satellite data and R programming.</p>
+<p class="justify">After the fire incident, the intensity of the burn scars significantly increased, and the vegetation cover significantly decreased, according to the dNBR and dNDVI study. This was further supported by the calculation of the extent of land damaged by fire for each severity level in hectares, which demonstrated a considerable loss of vegetation in the impacted regions. Also, the examination of kernel density revealed that the afflicted areas were concentrated heavily in several places, emphasizing the intensity of fire in those areas. The spatio-temporal analysis provided valuable insights into the dynamics of the forest fire, which can be useful in developing effective strategies for managing and mitigating the impact of forest fires.</p>
+
+## **References**
+
+<p class="justify">[1] Bar, Somnath, Bikash Ranjan Parida, and Arvind Chandra Pandey. "Landsat-8 and Sentinel-2 based Forest fire burn area mapping using machine learning algorithms on GEE cloud platform over Uttarakhand, Western Himalaya." Remote Sensing Applications: Society and Environment 18 (2020): 100324. - [link](https://www.sciencedirect.com/science/article/abs/pii/S2352938520300100)</p>
+<p class="justify">[2] Satir, Onur, Suha Berberoglu, and Cenk Donmez. "Mapping regional forest fire probability using artificial neural network model in a Mediterranean forest ecosystem." Geomatics, Natural Hazards and Risk 7.5 (2016): 1645-1658. - [link](https://www.tandfonline.com/doi/full/10.1080/19475705.2015.1084541)</p>
+<p class="justify">[3] Tariq, Aqil, et al. "Forest fire monitoring using spatial-statistical and Geo-spatial analysis of factors determining forest fire in Margalla Hills, Islamabad, Pakistan." Geomatics, Natural Hazards and Risk 12.1 (2021): 1212-1233. - [link](https://www.tandfonline.com/doi/full/10.1080/19475705.2021.1920477)</p>
+<p class="justify">[4] Fraser, R. H., and Z. Li. "Estimating fire-related parameters in boreal forest using SPOT VEGETATION." Remote sensing of Environment 82.1 (2002): 95-110. - [link](https://www2.atmos.umd.edu/~zli/PDF_papers/rse02_fraser&li.pdf)</p>
+<p class="justify">[5] Reed, William J. "Determining changes in historical forest fire frequency from a time-since-fire map." Journal of Agricultural, Biological, and Environmental Statistics (1998): 430-450. - [link](https://www.jstor.org/stable/1400575)</p>
+<p class="justify">[6] Gigović, Ljubomir, et al. "Testing a new ensemble model based on SVM and random forest in forest fire susceptibility assessment and its mapping in Serbia’s Tara National Park." Forests 10.5 (2019): 408. - [link](https://www.mdpi.com/1999-4907/10/5/408)</p>
+
+### _____________________________________________________________________________
+<center> <font size="5"> **Analysis of Spatio-Temporal Data** </font></center>
+<center> <font size="3"> _Institut für Geoinformatik - Universität Münster_ </font></center>
+<center> <font size="3"> _M.Sc Geoinformatics and Spatial Data Science_ </font></center>
